@@ -473,7 +473,7 @@
     currentAudio.play().catch(() => { });
   }
 
-  /* 朗读英文释义：优先英式语音，播放中按钮高亮 */
+  /* 朗读英文释义：优先美式语音，播放中按钮高亮 */
   let speakingBtn = null;
 
   function speakEn(text, btn) {
@@ -483,11 +483,11 @@
       synth.cancel();
       if (speakingBtn) { speakingBtn.classList.remove('playing'); speakingBtn = null; }
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-GB';
+      u.lang = 'en-US';
       u.rate = 0.95;
       const voices = synth.getVoices ? synth.getVoices() : [];
       if (voices.length) {
-        const v = voices.find((x) => /^en[-_]GB/i.test(x.lang)) || voices.find((x) => /^en/i.test(x.lang));
+        const v = voices.find((x) => /^en[-_]US/i.test(x.lang)) || voices.find((x) => /^en/i.test(x.lang));
         if (v) u.voice = v;
       }
       u.onstart = () => {
@@ -594,8 +594,7 @@
       '<div class="entry-ipa">' +
       (ipa ? '<span class="ipa-text">/' + esc(ipa) + '/</span>' : '<span class="ipa-text">—</span>') +
       '<div class="soundgroup" id="soundGroup">' +
-      '<button class="soundbtn" data-voice="us" data-word="' + esc(word) + '">' + iconSound() + '美</button>' +
-      '<button class="soundbtn" data-voice="uk" data-word="' + esc(word) + '">' + iconSound() + '英</button>' +
+      '<button class="soundbtn" data-voice="us" data-word="' + esc(word) + '">' + iconSound() + '美音</button>' +
       '</div></div></div>' +
       '<div class="entry-tools">' +
       '<button class="toolbtn' + (inVocab ? ' on' : '') + '" data-vocab="' + esc(word) + '">' + iconStar() + (inVocab ? '已收藏' : '生词本') + '</button>' +
