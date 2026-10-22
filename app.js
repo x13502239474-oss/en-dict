@@ -760,9 +760,9 @@
         btn.classList.add('playing');
         setTimeout(() => btn.classList.remove('playing'), 900);
         const data = await fetchEnrich(w);
-        const url = data && (want === 'uk' ? data.uk : data.us);
+        const url = data && data.us;
         if (url) playUrl(url);
-        else speak(w, want === 'uk' ? 'en-GB' : 'en-US');
+        else speak(w, 'en-US');
       });
     });
 
