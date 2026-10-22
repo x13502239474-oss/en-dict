@@ -473,6 +473,36 @@
     currentAudio.play().catch(() => { });
   }
 
+  /* 朗读英文释义：优先英式语音，播放中按钮高亮 */
+  let speakingBtn = null;
+
+  function speakEn(text, btn) {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) { toast('当前浏览器不支持语音合成'); return; }
+      synth.cancel();
+      if (speakingBtn) { speakingBtn.classList.remove('playing'); speakingBtn = null; }
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-GB';
+      u.rate = 0.95;
+      const voices = synth.getVoices ? synth.getVoices() : [];
+      if (voices.length) {
+        const v = voices.find((x) => /^en[-_]GB/i.test(x.lang)) || voices.find((x) => /^en/i.test(x.lang));
+        if (v) u.voice = v;
+      }
+      u.onstart = () => {
+        if (btn && btn.isConnected) { btn.classList.add('playing'); speakingBtn = btn; }
+      };
+      u.onend = u.onerror = () => {
+        if (btn && btn.isConnected) btn.classList.remove('playing');
+        if (speakingBtn === btn) speakingBtn = null;
+      };
+      synth.speak(u);
+    } catch (e) {
+      toast('语音播放失败');
+    }
+  }
+
   /* ---------------- 渲染：词条 ---------------- */
   function stars(n) {
     if (!n) return '';
@@ -529,6 +559,7 @@
         '<span class="en-pos">' + esc(s.pos || '') + '</span>' +
         '<span class="en-text">' + esc(s.text) + '</span>' +
         '<span class="en-zh" hidden></span>' +
+        '<button class="en-speak" data-speak="' + i + '" title="朗读本条释义" aria-label="朗读">' + iconSound() + '</button>' +
         '</div>'
       )).join('') + '</div></section>'
       : '';
@@ -701,11 +732,17 @@
   function bindEntryEvents(entry) {
     const word = entry[F.W];
 
-    /* 英文释义中译 */
+    /* 英文释义中译 + 朗读 */
     const enSenses = parseSenses(entry[F.DE]);
     if (enSenses.length) {
       bindZhToggle(word, enSenses);
       hydrateZH(word, enSenses, renderToken);
+      $$('#enBody .en-speak').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.dataset.speak, 10);
+          if (enSenses[i]) speakEn(enSenses[i].text, btn);
+        });
+      });
     }
 
     $$('#entryBody [data-toggle]').forEach((btn) => {

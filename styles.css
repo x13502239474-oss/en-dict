@@ -654,7 +654,7 @@ body.is-loading .loadingbar { opacity: 1; width: 100%; }
 }
 .def-en .en-item {
   display: grid;
-  grid-template-columns: 42px 1fr;
+  grid-template-columns: 42px 1fr auto;
   gap: 3px 10px;
   padding: 6px 0;
 }
@@ -681,6 +681,32 @@ body.is-loading .loadingbar { opacity: 1; width: 100%; }
   color: var(--text-faint);
   font-size: 12px;
   border-left-color: var(--line);
+}
+
+/* 释义朗读按钮 */
+.def-en .en-speak {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+  width: 26px;
+  height: 26px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-faint);
+  transition: color .15s, background .15s;
+}
+.def-en .en-speak svg { width: 13px; height: 13px; fill: currentColor; }
+.def-en .en-speak:hover { color: var(--gold); background: var(--gold-dim); }
+.def-en .en-speak.playing {
+  color: var(--gold);
+  background: var(--gold-dim);
+  animation: speakPulse 1.1s ease-in-out infinite;
+}
+@keyframes speakPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--gold-dim); }
+  50% { box-shadow: 0 0 0 5px var(--gold-dim); }
 }
 
 /* 中文开关 */
