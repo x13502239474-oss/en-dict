@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>英汉词典 · English–Chinese Dictionary</title>
+<meta name="description" content="英汉双向词典查询：英式/美式音标与发音、词性分组释义、词形变化、考试标签与词频分级。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e14'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='38' fill='%23d9b26a' text-anchor='middle'%3E%C3%86%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#" id="brand" title="返回首页">
+      <span class="brand-mark">Æ</span>
+      <span class="brand-text">
+        <strong>英汉词典</strong>
+        <em>English–Chinese</em>
+      </span>
+    </a>
+
+    <div class="searchshell">
+      <form class="searchform" id="searchform" autocomplete="off">
+        <svg class="searchicon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+        <input id="q" type="search" placeholder="搜索英文单词，或输入中文释义" spellcheck="false" autocapitalize="off" aria-label="查询">
+        <button type="button" class="clearbtn" id="clearbtn" aria-label="清空">×</button>
+        <kbd class="slash-hint">/</kbd>
+      </form>
+      <div class="suggest" id="suggest" role="listbox" hidden></div>
+    </div>
+
+    <nav class="topnav">
+      <button class="navbtn" data-act="vocab" aria-label="生词本">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+        <span class="navlabel">生词本</span>
+        <span class="count" id="vocabCount">0</span>
+      </button>
+      <button class="navbtn icononly" data-act="history" aria-label="查询足迹">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      </button>
+      <button class="navbtn icononly" data-act="theme" id="themeBtn" aria-label="切换主题">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+      </button>
+      <button class="navbtn icononly" data-act="about" aria-label="关于数据">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.6"/></svg>
+      </button>
+    </nav>
+  </div>
+  <div class="loadingbar" id="loadingbar"></div>
+</header>
+
+<main class="main" id="main">
+
+  <!-- 首页 -->
+  <section class="view" id="home">
+    <div class="hero">
+      <p class="hero-eyebrow">双解 · 分级 · 可溯源</p>
+      <h1 class="hero-title">英汉词典</h1>
+      <p class="hero-sub">
+        收录 <b id="statWords">—</b> 个词条，覆盖中考、高考、四六级、考研、雅思、托福、GRE 词汇。
+        英式与美式音标、按词性分组释义、词形变化、柯林斯星级与牛津核心词标注。
+      </p>
+
+      <div class="hero-search">
+        <input id="q2" type="search" placeholder="试试 serendipity / 坚持 / ephemeral" spellcheck="false" aria-label="查询">
+        <button id="heroGo" type="button">查询</button>
+      </div>
+
+      <div class="quickrow">
+        <span class="quicklabel">按考试浏览</span>
+        <div class="quickchips" id="quickchips">
+          <button data-tag="zk">中考</button>
+          <button data-tag="gk">高考</button>
+          <button data-tag="cet4">四级</button>
+          <button data-tag="cet6">六级</button>
+          <button data-tag="ky">考研</button>
+          <button data-tag="ielts">雅思</button>
+          <button data-tag="toefl">托福</button>
+          <button data-tag="gre">GRE</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <article class="card wotd" id="wotd">
+        <header class="card-head">
+          <span class="card-kicker">每日一词</span>
+          <button class="card-act" id="randomWord" title="换一个">随机 ↻</button>
+        </header>
+        <div class="card-body" id="wotdBody">
+          <div class="skeleton sk-lg"></div>
+          <div class="skeleton sk-sm"></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <header class="card-head"><span class="card-kicker">最近查询</span></header>
+        <div class="card-body" id="recentBody">
+          <p class="empty">还没有查询记录</p>
+        </div>
+      </article>
+
+      <article class="card">
+        <header class="card-head"><span class="card-kicker">收藏生词</span></header>
+        <div class="card-body" id="vocabPreview">
+          <p class="empty">生词本为空，查词后可点“加入生词本”</p>
+        </div>
+      </article>
+    </div>
+
+    <p class="footnote">
+      释义采用开源词库 ECDICT（MIT 协议）；柯林斯星级、牛津核心词表为分级标注，非牛津官方释义。
+      发音与例句在联网时由开放接口补充。
+    </p>
+  </section>
+
+  <!-- 词条 -->
+  <section class="view" id="entryView" hidden>
+    <div class="entrywrap" id="entryBody"></div>
+  </section>
+
+  <!-- 列表（按考试浏览 / 搜索结果） -->
+  <section class="view" id="listView" hidden>
+    <header class="listhead">
+      <h2 id="listTitle">列表</h2>
+      <p id="listMeta" class="listmeta"></p>
+    </header>
+    <div class="wordgrid" id="wordgrid"></div>
+    <div class="listmore" id="listMore"></div>
+  </section>
+
+  <!-- 空状态 -->
+  <section class="view" id="missView" hidden>
+    <div class="missbox" id="missBox"></div>
+  </section>
+</main>
+
+<aside class="drawer" id="drawer" hidden>
+  <div class="drawer-head">
+    <h3 id="drawerTitle">生词本</h3>
+    <button class="drawer-close" id="drawerClose" aria-label="关闭">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot" id="drawerFoot"></div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+
+<div class="toast" id="toast" hidden></div>
+
+<div class="modal" id="aboutModal" hidden>
+  <div class="modal-card">
+    <h3>关于本词典</h3>
+    <p>本站是一个纯前端英汉词典查询工具，界面与信息结构参照牛津英汉双解词典的编排逻辑：<b>词头 → 音标 → 词性分组释义 → 词形变化 → 用法标注</b>。</p>
+    <p><b>关于数据来源</b>：牛津词典的释义文本受版权保护，无法直接收录。本站释义来自开源词库 <b>ECDICT</b>（MIT 协议，约 77 万词条中精选 <span id="aboutWords">—</span> 条常用及考试词汇）。柯林斯星级、牛津 3000 核心词标记为公开的分级信息，仅作难度参考。</p>
+    <p><b>在线增强</b>：联网时通过开放词典接口获取英式/美式真人发音与英文例句；离线时使用浏览器语音合成朗读。</p>
+    <p class="muted">离线可用：所有数据以本地静态文件形式分片存放，断网也能查询全部词条。</p>
+    <button class="modal-ok" id="aboutOk">知道了</button>
+  </div>
+</div>
+
+<script src="data/meta.js"></script>
+<script src="data/core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
