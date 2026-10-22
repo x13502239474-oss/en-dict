@@ -653,17 +653,52 @@ body.is-loading .loadingbar { opacity: 1; width: 100%; }
   line-height: 1.78;
 }
 .def-en .en-item {
-  display: flex;
-  gap: 10px;
-  padding: 4px 0;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 3px 10px;
+  padding: 6px 0;
 }
 .def-en .en-pos {
+  grid-row: 1;
+  grid-column: 1;
   font-family: var(--serif);
   font-style: italic;
   color: var(--gold);
-  flex: none;
-  min-width: 42px;
+  white-space: nowrap;
 }
+
+/* 英文释义的中译行 */
+.def-en .en-zh {
+  grid-column: 2;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  padding-left: 9px;
+  border-left: 2px solid var(--gold-dim);
+  font-family: var(--sans);
+}
+.def-en .en-zh.loading {
+  color: var(--text-faint);
+  font-size: 12px;
+  border-left-color: var(--line);
+}
+
+/* 中文开关 */
+.zhtoggle {
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  color: var(--text-faint);
+  text-transform: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.zhtoggle:hover { color: var(--gold); border-color: var(--gold); }
+.zhtoggle ~ .caret { margin-left: 0; }
 
 /* 词形变化 */
 .forms-grid {

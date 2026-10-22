@@ -320,6 +320,138 @@
     return task;
   }
 
+  /* ---------------- 英文释义中译 ---------------- */
+  let zhOn = store.get('zhOn', true);
+
+  const ZH_API = 'https://transmart.qq.com/api/imt';
+  /* 服务端仅校验请求体格式，不校验来源；CORS 允许任意站点 */
+  const ZH_CK = 'browser-chrome-120.0.0-Windows-10-3f9a1c2e-8b4d-4e1a-9c7f-2d5e8a1b6c34-1700000000000';
+
+  function getZhCache(word) {
+    const v = store.get('zh.' + word.toLowerCase(), null);
+    return Array.isArray(v) && v.length ? v : null;
+  }
+
+  function setZhCache(word, arr) {
+    const key = word.toLowerCase();
+    store.set('zh.' + key, arr);
+    let keys = store.get('zhKeys', []);
+    keys = keys.filter((k) => k !== key);
+    keys.push(key);
+    if (keys.length > 400) {
+      keys.splice(0, keys.length - 400).forEach((k) => {
+        try { localStorage.removeItem('oxf.zh.' + k); } catch (e) { }
+      });
+    }
+    store.set('zhKeys', keys);
+  }
+
+  function postTranslate(texts) {
+    return fetch(ZH_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        header: { fn: 'auto_translation', client_key: ZH_CK },
+        type: 'plain',
+        model_category: 'normal',
+        text_domain: 'general',
+        source: { lang: 'en', text_list: texts },
+        target: { lang: 'zh' },
+      }),
+    }).then((res) => {
+      if (!res.ok) throw new Error('http ' + res.status);
+      return res.json();
+    }).then((data) => {
+      if (data.header && data.header.ret_code !== 'succ') throw new Error(data.header.ret_code);
+      return data.auto_translation || [];
+    });
+  }
+
+  async function translateTexts(texts) {
+    const out = [];
+    const BATCH = 20;
+    for (let i = 0; i < texts.length; i += BATCH) {
+      const chunk = texts.slice(i, i + BATCH);
+      let part = null;
+      for (let attempt = 0; attempt < 2 && !part; attempt++) {
+        try {
+          part = await postTranslate(chunk);
+        } catch (e) {
+          if (attempt === 0) await new Promise((r) => setTimeout(r, 420));
+        }
+      }
+      if (!part || !part.length) return null;
+      out.push.apply(out, part);
+      if (i + BATCH < texts.length) await new Promise((r) => setTimeout(r, 160));
+    }
+    return out;
+  }
+
+  function applyZH(zh) {
+    const body = $('#enBody');
+    if (!body) return;
+    $$('.en-item', body).forEach((el, i) => {
+      const cell = el.querySelector('.en-zh');
+      if (!cell) return;
+      const t = zh[i];
+      if (t && t.trim()) {
+        cell.textContent = t;
+        cell.hidden = false;
+        cell.classList.remove('loading');
+      } else {
+        cell.hidden = true;
+      }
+    });
+  }
+
+  async function hydrateZH(word, senses, token) {
+    const body = $('#enBody');
+    if (!body || !senses.length) return;
+    if (!zhOn) return;
+
+    const cached = getZhCache(word);
+    if (cached) { applyZH(cached); return; }
+
+    const cells = $$('.en-zh', body);
+    cells.forEach((c) => {
+      c.hidden = false;
+      c.classList.add('loading');
+      c.textContent = '翻译中…';
+    });
+
+    const zh = await translateTexts(senses.map((s) => s.text));
+    if (token !== renderToken) return;
+
+    if (!zh) {
+      cells.forEach((c) => { c.hidden = true; c.classList.remove('loading'); c.textContent = ''; });
+      const t = $('#zhToggle');
+      if (t) t.textContent = '中文 · 联网失败';
+      return;
+    }
+    setZhCache(word, zh);
+    applyZH(zh);
+  }
+
+  function bindZhToggle(word, senses) {
+    const t = $('#zhToggle');
+    if (!t) return;
+    t.addEventListener('click', (e) => {
+      e.stopPropagation();
+      zhOn = !zhOn;
+      store.set('zhOn', zhOn);
+      t.textContent = '中文 · ' + (zhOn ? '开' : '关');
+      const body = $('#enBody');
+      if (!body) return;
+      if (!zhOn) {
+        $$('.en-zh', body).forEach((c) => { c.hidden = true; });
+      } else {
+        const cached = getZhCache(word);
+        if (cached) applyZH(cached);
+        else hydrateZH(word, senses, renderToken);
+      }
+    });
+  }
+
   /* ---------------- 发音 ---------------- */
   let currentAudio = null;
 
@@ -388,9 +520,16 @@
       : '<p class="empty">该词条暂无中文释义</p>';
 
     const enHtml = enSenses.length
-      ? '<section class="block"><button class="block-head" aria-expanded="true" data-toggle>英文释义<span class="caret">▾</span></button>' +
-      '<div class="block-body def-en">' + enSenses.map((s) => (
-        '<div class="en-item"><span class="en-pos">' + esc(s.pos || '') + '</span><span>' + esc(s.text) + '</span></div>'
+      ? '<section class="block" id="enBlock">' +
+      '<button class="block-head" aria-expanded="true" data-toggle>英文释义' +
+      '<span class="zhtoggle" id="zhToggle">中文 · ' + (zhOn ? '开' : '关') + '</span>' +
+      '<span class="caret">▾</span></button>' +
+      '<div class="block-body def-en" id="enBody">' + enSenses.map((s, i) => (
+        '<div class="en-item" data-i="' + i + '">' +
+        '<span class="en-pos">' + esc(s.pos || '') + '</span>' +
+        '<span class="en-text">' + esc(s.text) + '</span>' +
+        '<span class="en-zh" hidden></span>' +
+        '</div>'
       )).join('') + '</div></section>'
       : '';
 
@@ -561,6 +700,13 @@
 
   function bindEntryEvents(entry) {
     const word = entry[F.W];
+
+    /* 英文释义中译 */
+    const enSenses = parseSenses(entry[F.DE]);
+    if (enSenses.length) {
+      bindZhToggle(word, enSenses);
+      hydrateZH(word, enSenses, renderToken);
+    }
 
     $$('#entryBody [data-toggle]').forEach((btn) => {
       btn.addEventListener('click', () => {
