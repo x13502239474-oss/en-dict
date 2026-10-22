@@ -594,8 +594,8 @@
       '<div class="entry-ipa">' +
       (ipa ? '<span class="ipa-text">/' + esc(ipa) + '/</span>' : '<span class="ipa-text">—</span>') +
       '<div class="soundgroup" id="soundGroup">' +
-      '<button class="soundbtn" data-voice="uk" data-word="' + esc(word) + '">' + iconSound() + '英</button>' +
       '<button class="soundbtn" data-voice="us" data-word="' + esc(word) + '">' + iconSound() + '美</button>' +
+      '<button class="soundbtn" data-voice="uk" data-word="' + esc(word) + '">' + iconSound() + '英</button>' +
       '</div></div></div>' +
       '<div class="entry-tools">' +
       '<button class="toolbtn' + (inVocab ? ' on' : '') + '" data-vocab="' + esc(word) + '">' + iconStar() + (inVocab ? '已收藏' : '生词本') + '</button>' +
