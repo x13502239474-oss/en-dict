@@ -559,7 +559,7 @@
         '<span class="en-pos">' + esc(s.pos || '') + '</span>' +
         '<span class="en-text">' + esc(s.text) + '</span>' +
         '<span class="en-zh" hidden></span>' +
-        '<button class="en-speak" data-speak="' + i + '" title="朗读本条释义" aria-label="朗读">' + iconSound() + '</button>' +
+        '<button class="en-speak" data-speak="' + i + '" title="朗读本条释义" aria-label="朗读">' + iconSound() + '<em>朗读</em></button>' +
         '</div>'
       )).join('') + '</div></section>'
       : '';

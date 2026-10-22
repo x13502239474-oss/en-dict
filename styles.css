@@ -688,17 +688,27 @@ body.is-loading .loadingbar { opacity: 1; width: 100%; }
   grid-column: 3;
   grid-row: 1;
   align-self: start;
-  width: 26px;
-  height: 26px;
   margin-top: 1px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--text-faint);
-  transition: color .15s, background .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--gold);
+  background: var(--gold-dim);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.def-en .en-speak em {
+  font-style: normal;
+  font-family: var(--sans);
 }
 .def-en .en-speak svg { width: 13px; height: 13px; fill: currentColor; }
-.def-en .en-speak:hover { color: var(--gold); background: var(--gold-dim); }
+.def-en .en-speak:hover { border-color: var(--gold); background: var(--gold-dim); filter: brightness(1.15); }
 .def-en .en-speak.playing {
   color: var(--gold);
   background: var(--gold-dim);
