@@ -282,19 +282,24 @@
 
   /* ---------------- 在线增强（发音 + 例句） ---------------- */
   const enrichCache = new Map();
+  let enrichFails = 0, enrichDead = false;
 
   async function fetchEnrich(word) {
     const key = word.toLowerCase();
     if (enrichCache.has(key)) return enrichCache.get(key);
+    /* api.dictionaryapi.dev 国内不可达：连续两次网络失败后直接熔断，
+       避免每查一个词都干等 6 秒超时（例句区块会自动隐藏）。 */
+    if (enrichDead) return null;
     const task = (async () => {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 6000);
+      const timer = setTimeout(() => ctrl.abort(), 4000);
       try {
         const res = await fetch(
           'https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(key),
           { signal: ctrl.signal }
         );
         if (!res.ok) throw new Error('not found');
+        enrichFails = 0;
         const data = await res.json();
         const out = { uk: '', us: '', examples: [], defs: [] };
         (data[0].phonetics || []).forEach((p) => {
@@ -311,6 +316,10 @@
         });
         return out;
       } catch (e) {
+        if (!(e && e.message === 'not found')) {
+          enrichFails++;
+          if (enrichFails >= 2) enrichDead = true;
+        }
         return null;
       } finally {
         clearTimeout(timer);
