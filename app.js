@@ -452,16 +452,88 @@
     });
   }
 
-  /* ---------------- 发音 ---------------- */
+  /* ---------------- 发音 ----------------
+     iOS/iPadOS 在近版本系统更新后对 speechSynthesis 支持不稳定：getVoices() 常为空、
+     speak() 被静默丢弃且不触发 error。因此 iOS 直接播放在线发音音频流，
+     桌面端仍优先系统语音（离线、即时），失败时自动降级到同一音频通道。 */
   let currentAudio = null;
 
-  function speak(text, lang) {
+  const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  /* 0.1s 静音 WAV：仅用于在首次手势内打开 <audio> 通道 */
+  const SILENT_WAV = 'data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
+  let audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
     try {
-      if (!window.speechSynthesis) return false;
+      const a = new Audio(SILENT_WAV);
+      a.muted = true;
+      a.play().catch(() => {});
+    } catch (e) { /* 忽略 */ }
+  }
+  if (IS_IOS) document.addEventListener('pointerdown', unlockAudio, true);
+
+  /* 发音音频地址：单词用有道词典真人录音（可分英/美音），整句用百度语音合成，
+     两个源交叉兜底。页面已设 no-referrer，避免被音频源防盗链拦截。
+     注：原先单词走 api.dictionaryapi.dev 的录音，该域名国内基本不可达（502），已弃用。 */
+  function ttsSrc(text, lang, alt) {
+    let t = String(text || '')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[^\x20-\x7E]/g, ' ')     // 释义里混入的中文标点/汉字会让英文合成读成乱码，先剔掉
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!t) return '';
+    const isWord = !/\s/.test(t);
+    const uk = /GB/i.test(lang || '');
+    if (isWord) {
+      return alt
+        ? 'https://fanyi.baidu.com/gettts?lan=en&text=' + encodeURIComponent(t) + '&spd=3&source=web'
+        : 'https://dict.youdao.com/dictvoice?type=' + (uk ? 1 : 2) + '&audio=' + encodeURIComponent(t);
+    }
+    return alt
+      ? 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(t) + '&le=en'
+      : 'https://fanyi.baidu.com/gettts?lan=en&text=' + encodeURIComponent(t) + '&spd=3&source=web';
+  }
+
+  /* 用 <audio> 播放在线发音，返回 Promise<boolean> */
+  function playTTS(text, lang) {
+    return new Promise((resolve) => {
+      const src = ttsSrc(text, lang, false);
+      if (!src) { resolve(false); return; }
+      const a = new Audio();
+      a.setAttribute('referrerpolicy', 'no-referrer');
+      a.preload = 'auto';
+      if (currentAudio) { try { currentAudio.pause(); } catch (e) { } }
+      currentAudio = a;
+      let settled = false;
+      const finish = (ok) => { if (settled) return; settled = true; resolve(ok); };
+      a.onended = () => finish(true);
+      a.onerror = () => {
+        if (a.dataset.alt) { finish(false); return; }
+        a.dataset.alt = '1';
+        a.src = ttsSrc(text, lang, true);      // 换备用源再试一次
+        a.play().catch(() => finish(false));
+      };
+      a.src = src;
+      const p = a.play();
+      if (p && p.catch) p.catch(() => finish(false));
+    });
+  }
+
+  function speak(text, lang) {
+    if (IS_IOS || !window.speechSynthesis) {
+      playTTS(text, lang);
+      return true;
+    }
+    try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = lang;
       u.rate = 0.92;
+      u.onerror = () => playTTS(text, lang);
       window.speechSynthesis.speak(u);
       return true;
     } catch (e) { return false; }
@@ -470,6 +542,7 @@
   function playUrl(url) {
     if (currentAudio) { try { currentAudio.pause(); } catch (e) { } }
     currentAudio = new Audio(url);
+    currentAudio.setAttribute('referrerpolicy', 'no-referrer');
     currentAudio.play().catch(() => { });
   }
 
@@ -477,9 +550,17 @@
   let speakingBtn = null;
 
   function speakEn(text, btn) {
+    if (IS_IOS || !window.speechSynthesis) {
+      if (speakingBtn) speakingBtn.classList.remove('playing');
+      if (btn) { btn.classList.add('playing'); speakingBtn = btn; }
+      playTTS(text, 'en-US').then(() => {
+        if (btn && btn.isConnected) btn.classList.remove('playing');
+        if (speakingBtn === btn) speakingBtn = null;
+      });
+      return;
+    }
     try {
       const synth = window.speechSynthesis;
-      if (!synth) { toast('当前浏览器不支持语音合成'); return; }
       synth.cancel();
       if (speakingBtn) { speakingBtn.classList.remove('playing'); speakingBtn = null; }
       const u = new SpeechSynthesisUtterance(text);
@@ -490,16 +571,25 @@
         const v = voices.find((x) => /^en[-_]US/i.test(x.lang)) || voices.find((x) => /^en/i.test(x.lang));
         if (v) u.voice = v;
       }
+      let started = false;
       u.onstart = () => {
+        started = true;
         if (btn && btn.isConnected) { btn.classList.add('playing'); speakingBtn = btn; }
       };
-      u.onend = u.onerror = () => {
+      u.onend = () => {
         if (btn && btn.isConnected) btn.classList.remove('playing');
         if (speakingBtn === btn) speakingBtn = null;
       };
+      u.onerror = () => {
+        if (btn && btn.isConnected) btn.classList.remove('playing');
+        if (speakingBtn === btn) speakingBtn = null;
+        playTTS(text, 'en-US');               // 系统语音失败 → 在线音频
+      };
       synth.speak(u);
+      /* 1 秒内没有起播，视为语音引擎失效，改走在线音频 */
+      setTimeout(() => { if (!started) playTTS(text, 'en-US'); }, 1000);
     } catch (e) {
-      toast('语音播放失败');
+      playTTS(text, 'en-US');
     }
   }
 
@@ -754,15 +844,13 @@
     });
 
     $$('#entryBody [data-voice]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => {
         const w = btn.dataset.word;
         const want = btn.dataset.voice;
         btn.classList.add('playing');
         setTimeout(() => btn.classList.remove('playing'), 900);
-        const data = await fetchEnrich(w);
-        const url = data && data.us;
-        if (url) playUrl(url);
-        else speak(w, 'en-US');
+        /* 不再请求 api.dictionaryapi.dev（国内 502），直接播有道真人发音 */
+        playTTS(w, want === 'uk' ? 'en-GB' : 'en-US');
       });
     });
 
